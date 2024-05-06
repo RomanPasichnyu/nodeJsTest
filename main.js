@@ -1,78 +1,84 @@
-// const {foo}= require('./www/tester')
-// foo()
+const express = require('express')
+const {reader, writer} = require('./fs.service')
+const app = express()
 
-const path = require('node:path')
-const readline = require('node:readline');
-const fsPromises = require('node:fs/promises');
-const os = require('node:os');
-const EventEmitter = require('node:events');
-const http = require('node:http');
-async function foo(){
+app.use(express.json())
+app.use(express.urlencoded({extended: true}))
+
+app.get('/', (req, res) => {
+    res.send('hello world')
+})
+app.get('/users', async (req, res) => {
+    const users = await reader();
+    res.json(users)
+})
+
+app.post('/users', async (req, res) => {
     try {
-        // Path робота з шляхами
+        const {name} = req.body;
+        const users = await reader()
 
-        // console.log(path.basename(__dirname));  // nasha papka
-        // console.log(path.extname(__filename))  //.js
-        // console.log(path.parse(__filename)) // pokaje obj
+        const newUser = {id: users[users.length - 1].id + 1, name}
+        users.push(newUser)
+        await writer(users)
+        res.status(201).json(newUser)
+    } catch (e) {
+        res.status(400).json(e.message)
+    }
 
-        // Readline щось буде питати в консольці
+})
 
-        // readline.createInterface({
-        //     input:process.stdin,
-        //     output: process.stdout
-        // }).question('Enter name', (name)=>{
-        //     console.log(`Hello ${name}:)`);
-        //     process.exit(0)
-        // })
+app.get('/users/:userId', async (req, res) => {
+    try {
+        userId = Number(req.params.userId)
+        const users = await reader();
 
+        const user = users.find((user) => user.id === userId);
+        if (!user) {
+            throw new Error('no user by id')
+        }
+        res.json(user)
+    } catch (e) {
+        res.status(400).json(e.message)
+    }
+})
 
-        // fs - маніпуляція з файлами
-        // await fsPromises.writeFile('test.txt', 'Hello Node.js:)') // 1-file, 2-text v file
-        //
-        // const pathToFile = path.join(__dirname, 'www', 'text2.txt')
-        // await fsPromises.writeFile(pathToFile, 'hello new path2')  //new info v file
-        //
-        // const data = await fsPromises.readFile(pathToFile, "utf-8");  // read file, kodyvannya
-        // console.log(data)
-        //
-        // await fsPromises.appendFile(pathToFile, '\n new test qq all')
+app.delete('/users/:userId', async (req, res) => {
+    try {
+        const userId = Number(req.params.userId)
+        const users = await reader();
 
-        // // os infa pro system
-        // console.log(os.arch())
-        // console.log(os.cpus())
-        // console.log(os.homedir())
-        // console.log(os.hostname())
-        // console.log(os.version())
+        const index = users.findIndex((user) => user.id === userId);
+        if (index === -1) {
+            throw new Error('no user by id')
+        }
+        users.splice(index, 1)
+        await writer(users)
+        res.sendStatus(204)
+    } catch (e) {
+        res.status(400).json(e.message)
+    }
+})
+app.put('/users/:userId', async (req, res) => {
+    try {
+        const {name}= req.body
+        const userId = Number(req.params.userId)
+        const users = await reader();
 
-        // Emitter -підписка на подію
-        // const myEmitter = new EventEmitter()
-        // myEmitter.on('tap', ()=>{
-        //     console.log('work work')
-        // })
-        // myEmitter.once('one tap', ()=>{
-        //     console.log('one click')
-        // })
-        // myEmitter.emit('tap')
-        // myEmitter.emit('tap')
-        // myEmitter.emit('tap')
-        // myEmitter.emit('one tap')
-        // myEmitter.emit('one tap')
-        // myEmitter.emit('one tap')
-
-        // http server
-        // const server = http.createServer((req,res)=>{
-        //     res.writeHead(200, {'Content-type':'text/plain'})
-        //     res.end('okay')
-        // })
-        // server.listen(3005, '0.0.0.0', ()=>{
-        //     console.log('serverWorking at http://0.0.0.0:3005/')
-        // })
+        const index = users.findIndex((user) => user.id === userId);
+        if (index === -1) {
+            throw new Error('no user by id')
+        }
+        users[index] = {...users[index], name}
+        await writer(users)
+        res.status(201).json(users[index])
 
     } catch (e) {
-        console.error(e)
+        res.status(400).json(e.message)
     }
-}
-
-void foo()
+})
 
 
+app.listen(3001, '0.0.0.0', () => {
+    console.log('serverWorking at http://0.0.0.0:3001/');
+})
